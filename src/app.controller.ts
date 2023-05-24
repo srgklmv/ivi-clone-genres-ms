@@ -79,4 +79,9 @@ export class AppController {
     console.log('Genres MS - Controller - getGenresByMoviesIds at', new Date());
     return this.appService.getGenresByMoviesIds(getGenresByMoviesIdsDto.movies);
   }
+
+  @MessagePattern({ cmd: 'getHeaderStaticLinks' })
+  async getHeaderStaticLinks() {
+    return this.appService.getHeaderStaticLinks();
+  }
 }

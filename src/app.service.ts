@@ -8,6 +8,7 @@ import { AddGenresToMovieDto } from './dto/add-genres-to-movie.dto';
 import { Movie } from './entity/movie.entity';
 import { GetMoviesByGenresDto } from './dto/get-movies-by-genres.dto';
 import { DeleteResult, Repository, UpdateResult } from 'typeorm';
+import { HeaderStaticLinks } from './static/header-static-links';
 
 @Injectable()
 export class AppService {
@@ -137,6 +138,25 @@ export class AppService {
       moviesWithGenresArrays.push(await this.movieGenresToArray(movieId));
     }
     return moviesWithGenresArrays;
+  }
+
+  async getHeaderStaticLinks() {
+    console.log('Genres MS - Service - getHeaderStaticLinks at', new Date());
+    const headerStaticLinks = HeaderStaticLinks;
+
+    const genres = await this.genreRepository.find();
+
+    for (const genre of genres) {
+      const link = genre.nameEn.toLowerCase().split(' ').join('-');
+
+      const genreWithLink = {
+        ...genre,
+        link,
+      };
+      headerStaticLinks.movies_categories.genre.push(genreWithLink);
+    }
+
+    return headerStaticLinks;
   }
 
   private async movieGenresToArray(movieId: number) {
