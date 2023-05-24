@@ -152,6 +152,9 @@ export class AppService {
         genres: true,
       },
     });
+
+    if (movie==null) return [movieId, []]
+
     return [movie.movieId, movie.genres];
   }
 }
