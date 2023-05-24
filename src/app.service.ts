@@ -89,8 +89,9 @@ export class AppService {
     const genresCounter = { value: 0 };
     const allDuplicatedMoviesIds = [];
     for (const genreNameEn of getMoviesByGenresDto.genres) {
+      const genreNameEnSpaced = genreNameEn.split('-').join(' ');
       const capitalizedNameEn =
-        genreNameEn.charAt(0).toUpperCase() + genreNameEn.slice(1);
+        genreNameEnSpaced.charAt(0).toUpperCase() + genreNameEnSpaced.slice(1);
       const moviesByGenre = await this.movieRepository.find({
         relations: {
           genres: true,
