@@ -6,7 +6,7 @@ export const HeaderStaticLinks = {
         id: 1,
         nameRu: 'Русские',
         nameEn: 'Russian',
-        link: '/movies/all?countries=ru',
+        link: '/movies/all?countries=rs',
       },
       {
         id: 2,
