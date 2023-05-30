@@ -7,7 +7,7 @@ import { UpdateGenreMessageDto } from './dto/update-genre-message.dto';
 import { AddGenresToMovieDto } from './dto/add-genres-to-movie.dto';
 import { Movie } from './entity/movie.entity';
 import { GetMoviesByGenresDto } from './dto/get-movies-by-genres.dto';
-import { DeleteResult, Repository, UpdateResult } from 'typeorm';
+import { DeleteResult, In, Repository, UpdateResult } from 'typeorm';
 import { HeaderStaticLinks } from './static/header-static-links';
 
 @Injectable()
@@ -86,45 +86,20 @@ export class AppService {
 
   async getMoviesByGenres(getMoviesByGenresDto: GetMoviesByGenresDto) {
     console.log('Genres MS - Service - getMoviesByGenresDto at', new Date());
-    const genresCounter = { value: 0 };
-    const allDuplicatedMoviesIds = [];
-    for (const genreNameEn of getMoviesByGenresDto.genres) {
-      const genreNameEnSpaced = genreNameEn.split('-').join(' ');
-      const capitalizedNameEn =
-        genreNameEnSpaced.charAt(0).toUpperCase() + genreNameEnSpaced.slice(1);
-      const moviesByGenre = await this.movieRepository.find({
-        relations: {
-          genres: true,
+
+    getMoviesByGenresDto.genres = getMoviesByGenresDto.genres.map(
+      (genreName: string) => genreName.at(0).toUpperCase() + genreName.slice(1),
+    );
+
+    const movies = await this.movieRepository.find({
+      where: {
+        genres: {
+          nameEn: In(getMoviesByGenresDto.genres),
         },
-        where: {
-          genres: {
-            nameEn: capitalizedNameEn,
-          },
-        },
-      });
-      const moviesByGenreIds = moviesByGenre.map((movie) => movie.movieId);
+      },
+    });
 
-      genresCounter.value++;
-      allDuplicatedMoviesIds.push(...moviesByGenreIds);
-    }
-
-    const countedIdsIncomes = {};
-    for (const id of allDuplicatedMoviesIds) {
-      countedIdsIncomes[id] =
-        countedIdsIncomes[id] >= 1
-          ? (countedIdsIncomes[id] = countedIdsIncomes[id] + 1)
-          : 1;
-    }
-
-    const moviesWithAllGenresIds = [];
-
-    for (const counter of Object.keys(countedIdsIncomes)) {
-      if (countedIdsIncomes[counter] == genresCounter.value) {
-        moviesWithAllGenresIds.push(counter);
-      }
-    }
-
-    return moviesWithAllGenresIds;
+    return movies.map((movie: Movie) => movie.movieId);
   }
 
   async deleteMovieFromGenres(movieId: number) {
@@ -174,7 +149,7 @@ export class AppService {
       },
     });
 
-    if (movie==null) return [movieId, []]
+    if (movie == null) return [movieId, []];
 
     return [movie.movieId, movie.genres];
   }
