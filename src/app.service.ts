@@ -120,17 +120,9 @@ export class AppService {
     console.log('Genres MS - Service - getHeaderStaticLinks at', new Date());
     const headerStaticLinks = HeaderStaticLinks;
 
-    const genres = await this.genreRepository.find({ take: 22 });
-
-    for (const genre of genres) {
-      const link = genre.nameEn.toLowerCase().split(' ').join('-');
-
-      const genreWithLink = {
-        ...genre,
-        link,
-      };
-      headerStaticLinks.movies_categories.genre.push(genreWithLink);
-    }
+    headerStaticLinks.movies_categories.genre = await this.genreRepository.find(
+      { take: 22 },
+    );
 
     return headerStaticLinks;
   }
