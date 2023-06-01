@@ -25,22 +25,22 @@ export const HeaderStaticLinks = {
       {
         id: 1,
         year: '2023',
-        link: '/movies/all?year=2023',
+        link: '/movies/all?years=2023',
       },
       {
         id: 2,
         year: '2022',
-        link: '/movies/all?year=2022',
+        link: '/movies/all?years=2022',
       },
       {
         id: 3,
         year: '2021',
-        link: '/movies/all?year=2021',
+        link: '/movies/all?years=2021',
       },
       {
         id: 4,
         year: '2020',
-        link: '/movies/all?year=2020',
+        link: '/movies/all?years=2020',
       },
     ],
     selection: [
