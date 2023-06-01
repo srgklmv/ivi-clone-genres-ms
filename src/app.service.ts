@@ -120,9 +120,22 @@ export class AppService {
     console.log('Genres MS - Service - getHeaderStaticLinks at', new Date());
     const headerStaticLinks = HeaderStaticLinks;
 
-    headerStaticLinks.movies_categories.genre = await this.genreRepository.find(
-      { take: 22 },
-    );
+    if (headerStaticLinks.movies_categories.genre.length > 0) {
+      return headerStaticLinks;
+    }
+
+    const genres = await this.genreRepository.find({ take: 22 });
+    for (const genre of genres) {
+      const genreNameKebabCased = genre.nameEn
+        .toLowerCase()
+        .split(' ')
+        .join('-');
+
+      headerStaticLinks.movies_categories.genre.push({
+        ...genre,
+        link: `/movies/${genreNameKebabCased}`,
+      });
+    }
 
     return headerStaticLinks;
   }
