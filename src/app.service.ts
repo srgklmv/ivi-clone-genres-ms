@@ -121,7 +121,7 @@ export class AppService {
     const headerStaticLinks = HeaderStaticLinks;
 
     if (headerStaticLinks.movies_categories.genre.length > 0) {
-      return headerStaticLinks;
+      headerStaticLinks.movies_categories.genre = [];
     }
 
     const genres = await this.genreRepository.find({ take: 22 });
