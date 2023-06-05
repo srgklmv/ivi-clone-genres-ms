@@ -1,4 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Genre } from './entity/genre.entity';
 import { CreateGenreMessageDto } from './dto/create-genre-message.dto';
@@ -9,6 +14,7 @@ import { Movie } from './entity/movie.entity';
 import { GetMoviesByGenresDto } from './dto/get-movies-by-genres.dto';
 import { DeleteResult, In, Repository, UpdateResult } from 'typeorm';
 import { HeaderStaticLinks } from './static/header-static-links';
+import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class AppService {
@@ -21,35 +27,71 @@ export class AppService {
     createGenreMessageDto: CreateGenreMessageDto,
   ): Promise<Genre> {
     console.log('Genres MS - Service - createGenre at', new Date());
+
+    const similarGenres = await this.genreRepository.find({
+      where: [
+        { nameEn: createGenreMessageDto.createGenreDto.nameEn },
+        { nameRu: createGenreMessageDto.createGenreDto.nameRu },
+      ],
+    });
+
+    if (similarGenres.length > 0) {
+      throw new RpcException(
+        new BadRequestException('Genre with given names already exists!'),
+      );
+    }
+
     return this.genreRepository.save(createGenreMessageDto.createGenreDto);
   }
 
   async getAllGenres(): Promise<Genre[]> {
     console.log('Genres MS - Service - getAllGenres at', new Date());
-    return this.genreRepository.find();
+
+    const genres = await this.genreRepository.find();
+
+    if (genres.length == 0) {
+      throw new RpcException(new NotFoundException('No genres were found!'));
+    }
+
+    return genres;
   }
 
   async getGenreById(
     getGenreByIdMessageDto: GenreByIdMessageDto,
   ): Promise<Genre> {
     console.log('Genres MS - Service - getGenre at', new Date());
-    return this.genreRepository.findOneBy({
+
+    const genre = await this.genreRepository.findOneBy({
       id: getGenreByIdMessageDto.genreId,
     });
+
+    if (!genre) {
+      throw new RpcException(new NotFoundException('Genre not found!'));
+    }
+
+    return genre;
   }
 
   async deleteGenre(
     getGenreByIdMessageDto: GenreByIdMessageDto,
   ): Promise<DeleteResult> {
     console.log('Genres MS - Service - deleteGenre at', new Date());
-    return this.genreRepository.delete(getGenreByIdMessageDto.genreId);
+
+    const genre = await this.getGenreById(getGenreByIdMessageDto);
+
+    return this.genreRepository.delete(genre);
   }
 
   async updateGenre(
     updateGenreMessageDto: UpdateGenreMessageDto,
   ): Promise<UpdateResult> {
     console.log('Genres MS - Service - updateGenre at', new Date());
-    return this.genreRepository.update(updateGenreMessageDto.genreId, {
+
+    const genre = await this.getGenreById({
+      genreId: updateGenreMessageDto.genreId,
+    });
+
+    return this.genreRepository.update(genre, {
       nameRu: updateGenreMessageDto.updateGenreDto.nameRu,
       nameEn: updateGenreMessageDto.updateGenreDto.nameEn,
     });
@@ -73,13 +115,11 @@ export class AppService {
     });
 
     //Adding genres to movie
-    movie.genres = [];
-    for (const genreId of addGenresToMovieDto.genres) {
-      const genre = await this.genreRepository.findOneBy({
-        id: genreId,
-      });
-      movie.genres.push(genre);
-    }
+    movie.genres = await this.genreRepository.find({
+      where: {
+        id: In(addGenresToMovieDto.genres),
+      },
+    });
 
     return await this.movieRepository.save(movie);
   }
