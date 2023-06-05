@@ -16,9 +16,7 @@ async function bootstrap() {
   });
 
   await app.startAllMicroservices().then(() => {
-    console.log(
-      `Genres MS started on ${process.env.APP_PORT} at ${new Date()}.`,
-    );
+    console.log(`Genres MS started at ${new Date()}.`);
     console.log('Application variables:');
     console.log('RabbitMQ address: ', process.env.RMQ_URL);
     console.log('Database host: ', process.env.DATABASE_HOST);
