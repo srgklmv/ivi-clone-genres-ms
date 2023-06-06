@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
+
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { Genre } from './entity/genre.entity';
 import { Movie } from './entity/movie.entity';
-import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
