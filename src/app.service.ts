@@ -1,20 +1,18 @@
+import { RpcException } from '@nestjs/microservices';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DeleteResult, In, Repository, UpdateResult } from 'typeorm';
 import {
   BadRequestException,
-  HttpException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+
 import { Genre } from './entity/genre.entity';
-import { CreateGenreMessageDto } from './dto/create-genre-message.dto';
-import { GenreByIdMessageDto } from './dto/genre-by-id-message.dto';
-import { UpdateGenreMessageDto } from './dto/update-genre-message.dto';
 import { AddGenresToMovieDto } from './dto/add-genres-to-movie.dto';
 import { Movie } from './entity/movie.entity';
 import { GetMoviesByGenresDto } from './dto/get-movies-by-genres.dto';
-import { DeleteResult, In, Repository, UpdateResult } from 'typeorm';
 import { HeaderStaticLinks } from './static/header-static-links';
-import { RpcException } from '@nestjs/microservices';
+import { CreateGenreDto } from './dto/genres/create-genre.dto';
 
 @Injectable()
 export class AppService {
@@ -23,15 +21,13 @@ export class AppService {
     @InjectRepository(Movie) private movieRepository: Repository<Movie>,
   ) {}
 
-  async createGenre(
-    createGenreMessageDto: CreateGenreMessageDto,
-  ): Promise<Genre> {
+  async createGenre(createGenreDto: CreateGenreDto): Promise<Genre> {
     console.log('Genres MS - Service - createGenre at', new Date());
 
-    const similarGenres = await this.genreRepository.find({
+    const similarGenres: Genre[] = await this.genreRepository.find({
       where: [
-        { nameEn: createGenreMessageDto.createGenreDto.nameEn },
-        { nameRu: createGenreMessageDto.createGenreDto.nameRu },
+        { nameEn: createGenreDto.nameEn },
+        { nameRu: createGenreDto.nameRu },
       ],
     });
 
@@ -41,13 +37,13 @@ export class AppService {
       );
     }
 
-    return this.genreRepository.save(createGenreMessageDto.createGenreDto);
+    return this.genreRepository.save(createGenreDto);
   }
 
   async getAllGenres(): Promise<Genre[]> {
     console.log('Genres MS - Service - getAllGenres at', new Date());
 
-    const genres = await this.genreRepository.find();
+    const genres: Genre[] = await this.genreRepository.find();
 
     if (genres.length == 0) {
       throw new RpcException(new NotFoundException('No genres were found!'));
@@ -56,13 +52,11 @@ export class AppService {
     return genres;
   }
 
-  async getGenreById(
-    getGenreByIdMessageDto: GenreByIdMessageDto,
-  ): Promise<Genre> {
+  async getGenreById(genreId: number): Promise<Genre> {
     console.log('Genres MS - Service - getGenre at', new Date());
 
-    const genre = await this.genreRepository.findOneBy({
-      id: getGenreByIdMessageDto.genreId,
+    const genre: Genre = await this.genreRepository.findOneBy({
+      id: genreId,
     });
 
     if (!genre) {
@@ -72,45 +66,35 @@ export class AppService {
     return genre;
   }
 
-  async deleteGenre(
-    getGenreByIdMessageDto: GenreByIdMessageDto,
-  ): Promise<DeleteResult> {
+  async deleteGenre(genreId: number): Promise<DeleteResult> {
     console.log('Genres MS - Service - deleteGenre at', new Date());
 
-    const genre = await this.getGenreById(getGenreByIdMessageDto);
+    const genre: Genre = await this.getGenreById(genreId);
 
     return this.genreRepository.delete(genre);
   }
 
   async updateGenre(
-    updateGenreMessageDto: UpdateGenreMessageDto,
+    genreId: number,
+    updateGenreDto: CreateGenreDto,
   ): Promise<UpdateResult> {
     console.log('Genres MS - Service - updateGenre at', new Date());
 
-    const genre = await this.getGenreById({
-      genreId: updateGenreMessageDto.genreId,
-    });
+    const genre: Genre = await this.getGenreById(genreId);
 
     return this.genreRepository.update(genre, {
-      nameRu: updateGenreMessageDto.updateGenreDto.nameRu,
-      nameEn: updateGenreMessageDto.updateGenreDto.nameEn,
+      nameRu: updateGenreDto.nameRu,
+      nameEn: updateGenreDto.nameEn,
     });
   }
 
-  async addGenresToMovie(addGenresToMovieDto: AddGenresToMovieDto) {
+  async addGenresToMovie(
+    addGenresToMovieDto: AddGenresToMovieDto,
+  ): Promise<Movie> {
     console.log('Genres MS - Service - addGenresToMovie at', new Date());
 
     //Create movie if not exists
-    if (
-      !(await this.movieRepository.findOneBy({
-        movieId: addGenresToMovieDto.movieId,
-      }))
-    ) {
-      await this.movieRepository.save({ movieId: addGenresToMovieDto.movieId });
-    }
-
-    //Get movie
-    const movie = await this.movieRepository.findOneBy({
+    const movie: Movie = await this.movieRepository.save({
       movieId: addGenresToMovieDto.movieId,
     });
 
@@ -124,14 +108,16 @@ export class AppService {
     return await this.movieRepository.save(movie);
   }
 
-  async getMoviesByGenres(getMoviesByGenresDto: GetMoviesByGenresDto) {
+  async getMoviesByGenres(
+    getMoviesByGenresDto: GetMoviesByGenresDto,
+  ): Promise<number[]> {
     console.log('Genres MS - Service - getMoviesByGenresDto at', new Date());
 
     getMoviesByGenresDto.genres = getMoviesByGenresDto.genres.map(
       (genreName: string) => genreName.at(0).toUpperCase() + genreName.slice(1),
     );
 
-    const movies = await this.movieRepository.find({
+    const movies: Movie[] = await this.movieRepository.find({
       where: {
         genres: {
           nameEn: In(getMoviesByGenresDto.genres),
@@ -142,29 +128,34 @@ export class AppService {
     return movies.map((movie: Movie) => movie.movieId);
   }
 
-  async deleteMovieFromGenres(movieId: number) {
+  async deleteMovieFromGenres(movieId: number): Promise<DeleteResult> {
     console.log('Genres MS - Service - deleteMovieFromGenres at', new Date());
+
     return this.movieRepository.delete({ movieId: movieId });
   }
 
-  async getGenresByMoviesIds(movies: number[]) {
+  async getGenresByMoviesIds(movies: number[]): Promise<[number, Genre[]][]> {
     console.log('Genres MS - Service - getGenresByMoviesIds at', new Date());
-    const moviesWithGenresArrays = [];
+
+    const moviesWithGenresArrays: [number, Genre[]][] = [];
+
     for (const movieId of movies) {
       moviesWithGenresArrays.push(await this.movieGenresToArray(movieId));
     }
+
     return moviesWithGenresArrays;
   }
 
-  async getHeaderStaticLinks() {
+  async getHeaderStaticLinks(): Promise<object> {
     console.log('Genres MS - Service - getHeaderStaticLinks at', new Date());
+
     const headerStaticLinks = HeaderStaticLinks;
 
     if (headerStaticLinks.movies_categories.genre.length > 0) {
       headerStaticLinks.movies_categories.genre = [];
     }
 
-    const genres = await this.genreRepository.find({ take: 22 });
+    const genres: Genre[] = await this.genreRepository.find({ take: 22 });
     for (const genre of genres) {
       const genreNameKebabCased = genre.nameEn
         .toLowerCase()
@@ -180,12 +171,15 @@ export class AppService {
     return headerStaticLinks;
   }
 
-  private async movieGenresToArray(movieId: number) {
+  private async movieGenresToArray(
+    movieId: number,
+  ): Promise<[number, Genre[]]> {
     console.log(
       'Genres MS - Service - PRIVATE movieGenresToArray at',
       new Date(),
     );
-    const movie = await this.movieRepository.findOne({
+
+    const movie: Movie = await this.movieRepository.findOne({
       where: {
         movieId: movieId,
       },
