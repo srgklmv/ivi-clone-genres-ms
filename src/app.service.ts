@@ -192,4 +192,12 @@ export class AppService {
 
     return [movie.movieId, movie.genres];
   }
+
+  async getGenreRepository() {
+    return this.genreRepository;
+  }
+
+  async getMovieRepository() {
+    return this.movieRepository;
+  }
 }
