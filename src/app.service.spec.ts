@@ -1,11 +1,12 @@
-import { AppService } from './app.service';
+import { RpcException } from '@nestjs/microservices';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DeleteResult, Repository, UpdateResult } from 'typeorm';
+
 import { Genre } from './entity/genre.entity';
 import { Movie } from './entity/movie.entity';
-import { DeleteResult, Repository, UpdateResult } from 'typeorm';
-import { RpcException } from '@nestjs/microservices';
 import { AddGenresToMovieDto } from './dto/add-genres-to-movie.dto';
+import { AppService } from './app.service';
 
 describe('AppService', () => {
   let appModule: TestingModule;
@@ -250,7 +251,6 @@ describe('AppService', () => {
   });
 
   describe('Add genres to movie.', () => {
-    let oldMovie: Movie;
     let newMovie: Movie;
     let newGenresIds: number[];
 
@@ -321,6 +321,193 @@ describe('AppService', () => {
       for (const genre of newGenres) {
         await appService.deleteGenre(genre.id);
       }
+    });
+  });
+
+  describe('Get movies by genres', () => {
+    const newGenres: Genre[] = [];
+    const newMovies: Movie[] = [];
+
+    beforeAll(async () => {
+      newGenres.push(
+        await appService.createGenre({
+          nameEn: 'New genre 1',
+          nameRu: 'Новый жанр 1',
+        }),
+      );
+      newGenres.push(
+        await appService.createGenre({
+          nameEn: 'New genre 2',
+          nameRu: 'Новый жанр 2',
+        }),
+      );
+      newGenres.push(
+        await appService.createGenre({
+          nameEn: 'New genre 3',
+          nameRu: 'Новый жанр 3',
+        }),
+      );
+
+      newMovies.push(
+        await appService.addGenresToMovie({
+          movieId: 1,
+          genres: [newGenres[0].id, newGenres[1].id],
+        }),
+      );
+      newMovies.push(
+        await appService.addGenresToMovie({
+          movieId: 2,
+          genres: [newGenres[1].id],
+        }),
+      );
+      newMovies.push(
+        await appService.addGenresToMovie({
+          movieId: 3,
+          genres: [newGenres[1].id, newGenres[2].id],
+        }),
+      );
+    });
+
+    it('Find by one existing genre.', async () => {
+      const firstRequest = await appService.getMoviesByGenres({
+        genres: ['new genre 3'],
+      });
+      const secondRequest = await appService.getMoviesByGenres({
+        genres: ['new genre 2'],
+      });
+
+      expect(firstRequest).toEqual(expect.arrayContaining([3]));
+      expect(secondRequest).toEqual(expect.arrayContaining([1, 2]));
+    });
+
+    it('Find by few existing genres.', async () => {
+      const firstRequest = await appService.getMoviesByGenres({
+        genres: ['new genre 3', 'new genre 2'],
+      });
+      const secondRequest = await appService.getMoviesByGenres({
+        genres: ['new genre 3', 'new genre 2', 'new genre 1'],
+      });
+
+      expect(firstRequest).toEqual(expect.arrayContaining([1, 2, 3]));
+      expect(secondRequest).toEqual(expect.arrayContaining([1, 2, 3]));
+    });
+
+    it('Find by non-existing and existing genres.', async () => {
+      const firstRequest = await appService.getMoviesByGenres({
+        genres: ['new genre 4', 'new genre 1'],
+      });
+
+      expect(firstRequest).toEqual(expect.arrayContaining([1]));
+    });
+
+    it('Find by non-existing genres.', async () => {
+      const firstRequest = await appService.getMoviesByGenres({
+        genres: ['new genre 77', 'new genre 222'],
+      });
+      const secondRequest = await appService.getMoviesByGenres({
+        genres: ['new genre 33', 'new genre 211', 'new genre 12'],
+      });
+
+      expect(firstRequest).toEqual([]);
+      expect(secondRequest).toEqual([]);
+    });
+
+    afterAll(async () => {
+      for (const genre of newGenres) {
+        await appService.deleteGenre(genre.id);
+      }
+      for (const movie of newMovies) {
+        await appService.deleteMovieFromGenres(movie.movieId);
+      }
+    });
+  });
+
+  describe('Get genres by movies IDs (extend movie objects with genre objects)', () => {
+    const newGenres: Genre[] = [];
+    const newMovies: Movie[] = [];
+
+    beforeAll(async () => {
+      newGenres.push(
+        await appService.createGenre({
+          nameEn: 'New genre 1',
+          nameRu: 'Новый жанр 1',
+        }),
+      );
+      newGenres.push(
+        await appService.createGenre({
+          nameEn: 'New genre 2',
+          nameRu: 'Новый жанр 2',
+        }),
+      );
+      newGenres.push(
+        await appService.createGenre({
+          nameEn: 'New genre 3',
+          nameRu: 'Новый жанр 3',
+        }),
+      );
+
+      newMovies.push(
+        await appService.addGenresToMovie({
+          movieId: 1,
+          genres: [newGenres[0].id, newGenres[1].id],
+        }),
+      );
+      newMovies.push(
+        await appService.addGenresToMovie({
+          movieId: 2,
+          genres: [newGenres[1].id],
+        }),
+      );
+      newMovies.push(
+        await appService.addGenresToMovie({
+          movieId: 3,
+          genres: [newGenres[1].id, newGenres[2].id],
+        }),
+      );
+
+      await appService.deleteMovieFromGenres(4);
+      await appService.deleteMovieFromGenres(5);
+    });
+
+    it('Add genres to existing movies.', async () => {
+      const response = await appService.getGenresByMoviesIds([1, 2, 3]);
+
+      expect(response[0][1]).toEqual(
+        expect.arrayContaining([newGenres[0], newGenres[1]]),
+      );
+      expect(response[1][1]).toEqual(expect.arrayContaining([newGenres[1]]));
+      expect(response[2][1]).toEqual(
+        expect.arrayContaining([newGenres[1], newGenres[2]]),
+      );
+    });
+
+    it('Add genres to non-existing movies.', async () => {
+      const response = await appService.getGenresByMoviesIds([4, 5]);
+
+      expect(response[0][1]).toEqual([]);
+      expect(response[1][1]).toEqual([]);
+    });
+
+    afterAll(async () => {
+      for (const genre of newGenres) {
+        await appService.deleteGenre(genre.id);
+      }
+      for (const movie of newMovies) {
+        await appService.deleteMovieFromGenres(movie.movieId);
+      }
+    });
+  });
+
+  describe('Get static header links.', () => {
+    it('Get links with genres.', async () => {
+      const links: any = await appService.getHeaderStaticLinks();
+
+      expect(links).toHaveProperty('movies_categories');
+      expect(links).toHaveProperty('series_categories');
+      expect(links).toHaveProperty('animation_categories');
+      expect(links.movies_categories).toHaveProperty('genre');
+      expect(links.movies_categories.genre.length).toEqual(22);
+      expect(links.movies_categories.genre[0]).toHaveProperty('link');
     });
   });
 });
