@@ -14,6 +14,7 @@ If you found this repo before exploring the [main repo](https://github.com/srgkl
 I recommend you to explore [main repo](https://github.com/srgklmv/ivi-clone-repo/.gitignore) firstly for understanding how to run the application.
 
 ## Requirements
+- Node.js
 - Postgres
 - RabbitMQ
 
@@ -44,15 +45,12 @@ $ npm run start:dev
 
 ## Test
 
+This microservice has only unit tests in case e2e tests should be provided in gateway.
+To run them just run following command:
+
 ```bash
 # unit tests
 $ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
 ```
 
 ## Author
